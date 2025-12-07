@@ -113,9 +113,6 @@ function findFrontendPath() {
 
 const frontendPath = findFrontendPath();
 
-// Serve static files from frontend
-app.use(express.static(frontendPath));
-
 // Session configuration with PostgreSQL store
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'fallback-secret',
@@ -160,43 +157,89 @@ passport.deserializeUser((user, done) => done(null, user));
 
 console.log('✅ Google OAuth configured successfully');
 
-// API Routes
-app.get('/api', (req, res) => {
-  res.json({ message: 'API is running', status: 'ok' });
-});
+// ============================================
+// API ROUTES (must come before static files)
+// ============================================
 
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    frontend: frontendPath
+  });
 });
 
+// API info
+app.get('/api', (req, res) => {
+  res.json({ 
+    message: 'API is running', 
+    status: 'ok',
+    endpoints: {
+      health: '/api/health',
+      auth: {
+        google: '/api/auth/google',
+        user: '/api/auth/user',
+        logout: '/api/auth/logout'
+      }
+    }
+  });
+});
+
+// Google OAuth login
 app.get('/api/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
+// Google OAuth callback
 app.get('/api/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?login=failed' }),
   (req, res) => {
+    console.log('✅ User authenticated successfully');
     res.redirect('/?login=success');
   }
 );
 
+// Get current user
 app.get('/api/auth/user', (req, res) => {
   if (req.isAuthenticated()) {
+    console.log('✅ User is authenticated:', req.user.displayName);
     res.json({ user: req.user });
   } else {
+    console.log('⚠️  User not authenticated');
     res.status(401).json({ error: 'Not authenticated' });
   }
 });
 
+// Logout
 app.post('/api/auth/logout', (req, res) => {
+  const userName = req.user?.displayName || 'Unknown';
   req.logout((err) => {
-    if (err) return res.status(500).json({ error: 'Logout failed' });
+    if (err) {
+      console.error('❌ Logout failed:', err);
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    console.log(`✅ User logged out: ${userName}`);
     res.json({ message: 'Logged out successfully' });
   });
 });
 
+// ============================================
+// STATIC FILES & FRONTEND
+// ============================================
+
+// Serve static files (CSS, JS, images)
+app.use(express.static(frontendPath, {
+  index: false // Don't serve index.html automatically
+}));
+
 // Serve frontend for all other routes (SPA fallback)
 app.get('*', (req, res) => {
+  // Don't log static file requests
+  if (!req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {
+    console.log(`📄 Serving index.html for: ${req.path}`);
+  }
+  
   const indexPath = path.join(frontendPath, 'index.html');
   
   if (fs.existsSync(indexPath)) {
@@ -207,6 +250,7 @@ app.get('*', (req, res) => {
       <h1>Frontend not found</h1>
       <p>Looking for: ${indexPath}</p>
       <p>Current directory: ${__dirname}</p>
+      <p><a href="/api/health">Check API Health</a></p>
     `);
   }
 });
