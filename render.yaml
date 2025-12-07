@@ -9,13 +9,17 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      cd backend && npm install
-      echo "Checking directory structure..."
+      echo "=== Build started ==="
+      echo "Current directory: $(pwd)"
+      echo "Directory structure:"
       ls -la
-      cd ..
-      ls -la
+      echo ""
       echo "Frontend files:"
-      ls -la frontend/
+      ls -la frontend/ || echo "Frontend directory not found!"
+      echo ""
+      echo "Installing backend dependencies..."
+      cd backend && npm install
+      echo "=== Build completed ==="
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:

@@ -44,8 +44,34 @@ app.use(cors({
 }));
 
 // Determine frontend path (works in both local and Render)
-const frontendPath = path.join(__dirname, '../frontend');
-console.log(`📁 Frontend path: ${frontendPath}`);
+const fs = require('fs');
+let frontendPath = path.join(__dirname, '../frontend');
+
+// Check if frontend exists, if not try alternative paths
+if (!fs.existsSync(frontendPath)) {
+  console.log(`⚠️  Frontend not found at: ${frontendPath}`);
+  
+  // Try Render's src directory structure
+  const renderPath = path.join(__dirname, '../../src/frontend');
+  if (fs.existsSync(renderPath)) {
+    frontendPath = renderPath;
+    console.log(`✅ Found frontend at Render path: ${frontendPath}`);
+  } else {
+    // Try absolute path
+    const absolutePath = '/opt/render/project/src/frontend';
+    if (fs.existsSync(absolutePath)) {
+      frontendPath = absolutePath;
+      console.log(`✅ Found frontend at absolute path: ${frontendPath}`);
+    } else {
+      console.error(`❌ Frontend not found! Tried:
+        - ${path.join(__dirname, '../frontend')}
+        - ${renderPath}
+        - ${absolutePath}`);
+    }
+  }
+} else {
+  console.log(`✅ Frontend path: ${frontendPath}`);
+}
 
 // Serve static files from frontend
 app.use(express.static(frontendPath));
@@ -131,9 +157,18 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Serve frontend for all other routes (SPA fallback)
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
-  console.log(`📄 Serving index.html from: ${indexPath}`);
-  res.sendFile(indexPath);
+  const indexPath = path.join(frontendPath, 'index.html');
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    console.error(`❌ index.html not found at: ${indexPath}`);
+    res.status(404).send(`
+      <h1>Frontend not found</h1>
+      <p>Looking for: ${indexPath}</p>
+      <p>Current directory: ${__dirname}</p>
+    `);
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -141,10 +176,16 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 Frontend and Backend served together on same URL`);
   console.log(`📁 __dirname: ${__dirname}`);
-  console.log(`📁 Frontend path: ${path.join(__dirname, '../frontend')}`);
+  console.log(`📁 Frontend path: ${frontendPath}`);
   
   // Verify frontend files exist
-  const fs = require('fs');
-  const indexExists = fs.existsSync(path.join(__dirname, '../frontend/index.html'));
+  const indexPath = path.join(frontendPath, 'index.html');
+  const indexExists = fs.existsSync(indexPath);
   console.log(`📄 index.html exists: ${indexExists}`);
+  
+  if (indexExists) {
+    console.log(`✅ All systems ready!`);
+  } else {
+    console.error(`❌ WARNING: Frontend files not accessible!`);
+  }
 });
