@@ -45,33 +45,39 @@ app.use(cors({
 
 // Determine frontend path (works in both local and Render)
 const fs = require('fs');
-let frontendPath = path.join(__dirname, '../frontend');
 
-// Check if frontend exists, if not try alternative paths
-if (!fs.existsSync(frontendPath)) {
-  console.log(`⚠️  Frontend not found at: ${frontendPath}`);
+// Function to find frontend directory
+function findFrontendPath() {
+  const possiblePaths = [
+    path.join(__dirname, '../frontend'),           // Local: backend/../frontend
+    path.join(__dirname, '../../frontend'),        // Render: backend/../../frontend (if in src/backend)
+    '/opt/render/project/src/frontend',            // Render absolute path
+    path.resolve(__dirname, '../frontend'),        // Resolved local path
+    path.resolve(__dirname, '../../frontend')      // Resolved Render path
+  ];
   
-  // Try Render's src directory structure
-  const renderPath = path.join(__dirname, '../../src/frontend');
-  if (fs.existsSync(renderPath)) {
-    frontendPath = renderPath;
-    console.log(`✅ Found frontend at Render path: ${frontendPath}`);
-  } else {
-    // Try absolute path
-    const absolutePath = '/opt/render/project/src/frontend';
-    if (fs.existsSync(absolutePath)) {
-      frontendPath = absolutePath;
-      console.log(`✅ Found frontend at absolute path: ${frontendPath}`);
-    } else {
-      console.error(`❌ Frontend not found! Tried:
-        - ${path.join(__dirname, '../frontend')}
-        - ${renderPath}
-        - ${absolutePath}`);
+  console.log(`🔍 Searching for frontend directory...`);
+  console.log(`📁 Current __dirname: ${__dirname}`);
+  
+  for (const testPath of possiblePaths) {
+    console.log(`   Trying: ${testPath}`);
+    if (fs.existsSync(testPath)) {
+      const indexPath = path.join(testPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        console.log(`✅ Found frontend at: ${testPath}`);
+        return testPath;
+      }
     }
   }
-} else {
-  console.log(`✅ Frontend path: ${frontendPath}`);
+  
+  console.error(`❌ Frontend not found in any of these locations:`);
+  possiblePaths.forEach(p => console.error(`   - ${p}`));
+  
+  // Return default path as fallback
+  return path.join(__dirname, '../frontend');
 }
+
+const frontendPath = findFrontendPath();
 
 // Serve static files from frontend
 app.use(express.static(frontendPath));

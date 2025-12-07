@@ -11,11 +11,16 @@ services:
     buildCommand: |
       echo "=== Build started ==="
       echo "Current directory: $(pwd)"
-      echo "Directory structure:"
       ls -la
       echo ""
-      echo "Frontend files:"
-      ls -la frontend/ || echo "Frontend directory not found!"
+      echo "Checking frontend..."
+      if [ -d "frontend" ]; then
+        echo "✅ Frontend directory found"
+        ls -la frontend/
+      else
+        echo "❌ Frontend directory not found!"
+        exit 1
+      fi
       echo ""
       echo "Installing backend dependencies..."
       cd backend && npm install
