@@ -48,30 +48,54 @@ const fs = require('fs');
 
 // Function to find frontend directory
 function findFrontendPath() {
+  // Render sets RENDER=true environment variable
+  const isRender = process.env.RENDER === 'true';
+  
   const possiblePaths = [
-    path.join(__dirname, '../frontend'),           // Local: backend/../frontend
-    path.join(__dirname, '../../frontend'),        // Render: backend/../../frontend (if in src/backend)
-    '/opt/render/project/src/frontend',            // Render absolute path
-    path.resolve(__dirname, '../frontend'),        // Resolved local path
-    path.resolve(__dirname, '../../frontend')      // Resolved Render path
+    path.join(__dirname, '../frontend'),                    // Local: backend/../frontend
+    path.join(__dirname, '../../frontend'),                 // If in nested structure
+    '/opt/render/project/src/frontend',                     // Render absolute path (most common)
+    path.join('/opt/render/project/src', 'frontend'),       // Render constructed path
+    path.resolve(process.cwd(), '../frontend'),             // From process working directory
+    path.resolve(process.cwd(), 'frontend'),                // Direct from cwd
+    path.join(process.cwd(), '../frontend')                 // Relative to cwd
   ];
   
   console.log(`🔍 Searching for frontend directory...`);
-  console.log(`📁 Current __dirname: ${__dirname}`);
+  console.log(`📁 __dirname: ${__dirname}`);
+  console.log(`📁 process.cwd(): ${process.cwd()}`);
+  console.log(`📁 Is Render: ${isRender}`);
   
   for (const testPath of possiblePaths) {
     console.log(`   Trying: ${testPath}`);
-    if (fs.existsSync(testPath)) {
-      const indexPath = path.join(testPath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        console.log(`✅ Found frontend at: ${testPath}`);
-        return testPath;
+    try {
+      if (fs.existsSync(testPath)) {
+        const indexPath = path.join(testPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          console.log(`✅ Found frontend at: ${testPath}`);
+          return testPath;
+        } else {
+          console.log(`   ⚠️  Directory exists but no index.html`);
+        }
       }
+    } catch (err) {
+      console.log(`   ❌ Error checking path: ${err.message}`);
     }
   }
   
-  console.error(`❌ Frontend not found in any of these locations:`);
+  console.error(`❌ Frontend not found in any location!`);
+  console.error(`Tried paths:`);
   possiblePaths.forEach(p => console.error(`   - ${p}`));
+  
+  // List what's actually in the parent directory
+  try {
+    const parentDir = path.join(__dirname, '..');
+    console.error(`\nContents of ${parentDir}:`);
+    const contents = fs.readdirSync(parentDir);
+    contents.forEach(item => console.error(`   - ${item}`));
+  } catch (err) {
+    console.error(`Could not list parent directory: ${err.message}`);
+  }
   
   // Return default path as fallback
   return path.join(__dirname, '../frontend');

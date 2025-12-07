@@ -11,15 +11,34 @@ services:
     buildCommand: |
       echo "=== Build started ==="
       echo "Current directory: $(pwd)"
-      echo "Directory structure:"
+      echo "Full path: $(realpath .)"
+      echo ""
+      echo "=== Directory structure ==="
       ls -la
       echo ""
-      echo "Frontend files:"
-      ls -la frontend/ || echo "Frontend directory not found!"
+      echo "=== Checking frontend directory ==="
+      if [ -d "frontend" ]; then
+        echo "✅ Frontend directory exists"
+        echo "Frontend files:"
+        ls -la frontend/
+        echo ""
+        echo "Checking index.html:"
+        if [ -f "frontend/index.html" ]; then
+          echo "✅ index.html found"
+        else
+          echo "❌ index.html NOT found"
+          exit 1
+        fi
+      else
+        echo "❌ Frontend directory NOT found!"
+        echo "Available directories:"
+        ls -d */
+        exit 1
+      fi
       echo ""
-      echo "Installing backend dependencies..."
+      echo "=== Installing backend dependencies ==="
       cd backend && npm install
-      echo "=== Build completed ==="
+      echo "=== Build completed successfully ==="
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
