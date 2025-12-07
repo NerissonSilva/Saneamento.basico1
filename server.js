@@ -48,13 +48,23 @@ const fs = require('fs');
 
 // Function to find frontend directory
 function findFrontendPath() {
-  // Render sets RENDER=true environment variable
+  // Check if FRONTEND_PATH is set (from Render environment variable)
+  if (process.env.FRONTEND_PATH) {
+    console.log(`📌 Using FRONTEND_PATH from environment: ${process.env.FRONTEND_PATH}`);
+    if (fs.existsSync(process.env.FRONTEND_PATH)) {
+      return process.env.FRONTEND_PATH;
+    } else {
+      console.warn(`⚠️  FRONTEND_PATH set but directory doesn't exist: ${process.env.FRONTEND_PATH}`);
+    }
+  }
+  
   const isRender = process.env.RENDER === 'true';
   
   const possiblePaths = [
     path.join(__dirname, '../frontend'),                    // Local: backend/../frontend
     path.join(__dirname, '../../frontend'),                 // If in nested structure
     '/opt/render/project/src/frontend',                     // Render absolute path (most common)
+    '/opt/render/project/frontend',                         // Render without src
     path.join('/opt/render/project/src', 'frontend'),       // Render constructed path
     path.resolve(process.cwd(), '../frontend'),             // From process working directory
     path.resolve(process.cwd(), 'frontend'),                // Direct from cwd

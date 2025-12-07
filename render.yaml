@@ -12,19 +12,21 @@ services:
       echo "=== Build started ==="
       echo "Current directory: $(pwd)"
       echo "Full path: $(realpath .)"
+      FRONTEND_PATH=$(realpath frontend)
+      echo "Frontend absolute path: $FRONTEND_PATH"
       echo ""
       echo "=== Directory structure ==="
       ls -la
       echo ""
       echo "=== Checking frontend directory ==="
       if [ -d "frontend" ]; then
-        echo "✅ Frontend directory exists"
+        echo "✅ Frontend directory exists at: $FRONTEND_PATH"
         echo "Frontend files:"
         ls -la frontend/
         echo ""
         echo "Checking index.html:"
         if [ -f "frontend/index.html" ]; then
-          echo "✅ index.html found"
+          echo "✅ index.html found at: $FRONTEND_PATH/index.html"
         else
           echo "❌ index.html NOT found"
           exit 1
@@ -56,3 +58,5 @@ services:
         fromDatabase:
           name: sessions-db
           property: connectionString
+      - key: FRONTEND_PATH
+        value: /opt/render/project/src/frontend
